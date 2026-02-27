@@ -35,16 +35,18 @@ namespace BusTicketBooking.Services
             if (dto.Passengers.Count == 0)
                 throw new InvalidOperationException("At least one passenger is required.");
 
-            // Validate duplicate seats in request
+            // validate duplicates in request
             var seatSet = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             foreach (var p in dto.Passengers)
             {
-                var seat = p.SeatNo.Trim();
+                var seat = (p.SeatNo ?? string.Empty).Trim();
+                if (string.IsNullOrWhiteSpace(seat))
+                    throw new InvalidOperationException("Seat number is required.");
                 if (!seatSet.Add(seat))
                     throw new InvalidOperationException($"Duplicate seat in request: {seat}");
             }
 
-            // Load schedule with bus/route for pricing & display
+            // Load schedule with bus/route for pricing & validation
             var schedule = await _db.BusSchedules
                 .Include(s => s.Bus)
                 .Include(s => s.Route)
@@ -52,15 +54,25 @@ namespace BusTicketBooking.Services
                 .FirstOrDefaultAsync(s => s.Id == dto.ScheduleId, ct)
                 ?? throw new InvalidOperationException("Schedule not found.");
 
-            // Price = base price * passenger count (simple v1 rule)
+            var totalSeats = schedule.Bus?.TotalSeats ?? 0;
+            if (totalSeats <= 0) totalSeats = 40; // fallback
+            var allowedSeats = GenerateNumericSeats(totalSeats);
+            var allowedSet = new HashSet<string>(allowedSeats, StringComparer.OrdinalIgnoreCase);
+
+            // validate seats against the bus allowed range (v1 numeric rule)
+            var invalid = dto.Passengers.Select(p => p.SeatNo.Trim()).Where(s => !allowedSet.Contains(s)).ToList();
+            if (invalid.Any())
+                throw new InvalidOperationException($"Invalid seat(s) for this bus: {string.Join(", ", invalid)}");
+
+            // pricing
             var total = schedule.BasePrice * dto.Passengers.Count;
 
-            // SERIALIZABLE transaction to avoid concurrent seat conflicts
-            await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
+            // SERIALIZABLE to avoid concurrent seat conflicts
+            await using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
 
-            // Check if any requested seat is already taken for this schedule (excluding cancelled bookings)
             var requestedSeats = dto.Passengers.Select(p => p.SeatNo.Trim()).ToList();
 
+            // taken seats for this schedule (exclude Cancelled)
             var takenSeats = await _db.BookingPassengers
                 .Where(bp => requestedSeats.Contains(bp.SeatNo))
                 .Join(_db.Bookings, bp => bp.BookingId, b => b.Id, (bp, b) => new { bp.SeatNo, b.ScheduleId, b.Status })
@@ -81,7 +93,7 @@ namespace BusTicketBooking.Services
             };
             await _bookings.AddAsync(entity, ct);
 
-            // Create passengers
+            // Passengers
             var passengerEntities = dto.Passengers.Select(p => new BookingPassenger
             {
                 BookingId = entity.Id,
@@ -89,10 +101,9 @@ namespace BusTicketBooking.Services
                 Age = p.Age,
                 SeatNo = p.SeatNo.Trim()
             }).ToList();
-
             await _passengers.AddRangeAsync(passengerEntities, ct);
 
-            // Create payment record (Initiated)
+            // Payment record
             var payment = new Payment
             {
                 BookingId = entity.Id,
@@ -104,7 +115,6 @@ namespace BusTicketBooking.Services
 
             await tx.CommitAsync(ct);
 
-            // Load full booking for response
             return await LoadForResponse(entity.Id, ct) ?? throw new InvalidOperationException("Booking created but failed to load.");
         }
 
@@ -135,7 +145,6 @@ namespace BusTicketBooking.Services
 
             if (e is null) return null;
             if (!allowPrivileged && e.UserId != userId) return null;
-
             return Map(e);
         }
 
@@ -148,20 +157,19 @@ namespace BusTicketBooking.Services
                 throw new UnauthorizedAccessException("You cannot cancel a booking you don't own.");
 
             if (booking.Status == BookingStatus.Cancelled)
-                return true; // already cancelled
+                return true;
 
             booking.Status = BookingStatus.Cancelled;
             booking.UpdatedAtUtc = DateTime.UtcNow;
             await _bookings.UpdateAsync(booking, ct);
 
-            // (Optional) handle refund logic here
+            // Optional: refund logic here
 
             return true;
         }
 
         public async Task<BookingResponseDto?> PayAsync(Guid userId, Guid bookingId, decimal amount, string providerRef, bool allowPrivileged = false, CancellationToken ct = default)
         {
-            // Simple mock payment: set Payment.Success and Booking.Confirmed
             var booking = await _db.Bookings
                 .Include(b => b.Payment)
                 .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
@@ -171,7 +179,6 @@ namespace BusTicketBooking.Services
             if (booking.Status == BookingStatus.Cancelled)
                 throw new InvalidOperationException("Cannot pay a cancelled booking.");
 
-            // In real world, verify amount matches, call gateway, etc.
             booking.Payment ??= new Payment { BookingId = booking.Id, Amount = booking.TotalAmount };
             booking.Payment.Amount = amount <= 0 ? booking.TotalAmount : amount;
             booking.Payment.Status = PaymentStatus.Success;
@@ -181,7 +188,6 @@ namespace BusTicketBooking.Services
             booking.UpdatedAtUtc = DateTime.UtcNow;
 
             await _db.SaveChangesAsync(ct);
-
             return await LoadForResponse(bookingId, ct);
         }
 
@@ -221,5 +227,8 @@ namespace BusTicketBooking.Services
                 }).ToList()
             };
         }
+
+        private static List<string> GenerateNumericSeats(int totalSeats)
+            => Enumerable.Range(1, totalSeats).Select(i => i.ToString()).ToList();
     }
 }

@@ -1,4 +1,5 @@
-﻿using BusTicketBooking.Dtos.Schedules;
+﻿using BusTicketBooking.Dtos.Common;
+using BusTicketBooking.Dtos.Schedules;
 using BusTicketBooking.Interfaces;
 using BusTicketBooking.Models;
 using Microsoft.AspNetCore.Authorization;
@@ -42,7 +43,6 @@ namespace BusTicketBooking.Controllers
         public async Task<ActionResult<ScheduleResponseDto>> Create([FromBody] CreateScheduleRequestDto dto, CancellationToken ct)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
             try
             {
                 var created = await _schedules.CreateAsync(dto, ct);
@@ -60,7 +60,6 @@ namespace BusTicketBooking.Controllers
         public async Task<ActionResult<ScheduleResponseDto>> Update([FromRoute] Guid id, [FromBody] UpdateScheduleRequestDto dto, CancellationToken ct)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
             try
             {
                 var updated = await _schedules.UpdateAsync(id, dto, ct);
@@ -83,17 +82,55 @@ namespace BusTicketBooking.Controllers
             return NoContent();
         }
 
-        // Public: search schedules by fromStopId, toStopId, date (yyyy-MM-dd)
+        /// <summary>
+        /// Public: search schedules by fromStopId, toStopId, date (yyyy-MM-dd) with sorting + pagination
+        /// Example:
+        /// GET /api/schedules/search?fromStopId=...&toStopId=...&date=2026-02-27&page=1&pageSize=10&sortBy=price&sortDir=asc
+        /// </summary>
         [AllowAnonymous]
         [HttpGet("search")]
-        public async Task<ActionResult<IEnumerable<ScheduleResponseDto>>> Search([FromQuery] Guid fromStopId, [FromQuery] Guid toStopId, [FromQuery] DateTime date, CancellationToken ct)
+        public async Task<ActionResult<PagedResult<ScheduleResponseDto>>> Search(
+            [FromQuery] Guid fromStopId,
+            [FromQuery] Guid toStopId,
+            [FromQuery] DateTime date,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? sortBy = "departure",
+            [FromQuery] string? sortDir = "asc",
+            CancellationToken ct = default)
         {
             if (fromStopId == Guid.Empty || toStopId == Guid.Empty)
                 return BadRequest(new { message = "fromStopId and toStopId are required." });
 
+            var request = new PagedRequestDto
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                SortDir = sortDir
+            };
+
             var dateOnly = DateOnly.FromDateTime(date);
-            var results = await _schedules.SearchAsync(fromStopId, toStopId, dateOnly, ct);
+            var results = await _schedules.SearchAsync(fromStopId, toStopId, dateOnly, request, ct);
             return Ok(results);
+        }
+
+        /// <summary>
+        /// Public: get seat availability for a schedule (booked vs available)
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("{id:guid}/seats")]
+        public async Task<ActionResult<SeatAvailabilityResponseDto>> GetSeatAvailability([FromRoute] Guid id, CancellationToken ct)
+        {
+            try
+            {
+                var result = await _schedules.GetAvailabilityAsync(id, ct);
+                return Ok(result);
+            }
+            catch (InvalidOperationException ex)
+            {
+                return NotFound(new { message = ex.Message });
+            }
         }
     }
 }
