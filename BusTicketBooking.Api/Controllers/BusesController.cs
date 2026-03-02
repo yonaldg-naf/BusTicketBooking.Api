@@ -1,6 +1,7 @@
 ﻿using BusTicketBooking.Dtos.Bus;
 using BusTicketBooking.Interfaces;
 using BusTicketBooking.Models;
+using BusTicketBooking.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -56,8 +57,18 @@ namespace BusTicketBooking.Controllers
         public async Task<ActionResult<BusResponseDto>> Update([FromRoute] Guid id, [FromBody] UpdateBusRequestDto dto, CancellationToken ct)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
-
             var updated = await _busService.UpdateAsync(id, dto, ct);
+            if (updated == null) return NotFound();
+            return Ok(updated);
+        }
+
+        // PATCH: /api/buses/{id}/status   <-- added endpoint
+        [HttpPatch("{id:guid}/status")]
+        public async Task<ActionResult<BusResponseDto>> UpdateStatus([FromRoute] Guid id, [FromBody] UpdateBusStatusRequestDto dto, CancellationToken ct)
+        {
+            if (!ModelState.IsValid) return BadRequest(ModelState);
+
+            var updated = await _busService.UpdateStatusAsync(id, dto.Status, ct);
             if (updated == null) return NotFound();
 
             return Ok(updated);

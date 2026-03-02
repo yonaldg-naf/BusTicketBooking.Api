@@ -1,6 +1,7 @@
 ﻿using BusTicketBooking.Dtos.Bus;
 using BusTicketBooking.Interfaces;
 using BusTicketBooking.Models;
+using BusTicketBooking.Models.Enums;
 
 namespace BusTicketBooking.Services
 {
@@ -26,7 +27,8 @@ namespace BusTicketBooking.Services
                 Code = dto.Code.Trim(),
                 RegistrationNumber = dto.RegistrationNumber.Trim(),
                 BusType = dto.BusType,
-                TotalSeats = dto.TotalSeats
+                TotalSeats = dto.TotalSeats,
+                Status = dto.Status // <-- added
             };
 
             entity = await _buses.AddAsync(entity, ct);
@@ -53,6 +55,7 @@ namespace BusTicketBooking.Services
             entity.RegistrationNumber = dto.RegistrationNumber.Trim();
             entity.BusType = dto.BusType;
             entity.TotalSeats = dto.TotalSeats;
+            entity.Status = dto.Status; // <-- added
             entity.UpdatedAtUtc = DateTime.UtcNow;
 
             await _buses.UpdateAsync(entity, ct);
@@ -63,9 +66,21 @@ namespace BusTicketBooking.Services
         {
             var entity = await _buses.GetByIdAsync(id, ct);
             if (entity == null) return false;
-
             await _buses.RemoveAsync(entity, ct);
             return true;
+        }
+
+        // <-- added
+        public async Task<BusResponseDto?> UpdateStatusAsync(Guid id, BusStatus status, CancellationToken ct = default)
+        {
+            var entity = await _buses.GetByIdAsync(id, ct);
+            if (entity == null) return null;
+
+            entity.Status = status;
+            entity.UpdatedAtUtc = DateTime.UtcNow;
+            await _buses.UpdateAsync(entity, ct);
+
+            return Map(entity);
         }
 
         private static BusResponseDto Map(Bus e) => new()
@@ -76,6 +91,7 @@ namespace BusTicketBooking.Services
             RegistrationNumber = e.RegistrationNumber,
             BusType = e.BusType,
             TotalSeats = e.TotalSeats,
+            Status = e.Status, // <-- added
             CreatedAtUtc = e.CreatedAtUtc,
             UpdatedAtUtc = e.UpdatedAtUtc
         };

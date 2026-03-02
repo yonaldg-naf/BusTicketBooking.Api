@@ -10,6 +10,7 @@ namespace BusTicketBooking.Dtos.Bus
         public string RegistrationNumber { get; set; } = string.Empty;
         public BusType BusType { get; set; }
         public int TotalSeats { get; set; }
+        public BusStatus Status { get; set; }     // <-- added
         public DateTime CreatedAtUtc { get; set; }
         public DateTime? UpdatedAtUtc { get; set; }
     }

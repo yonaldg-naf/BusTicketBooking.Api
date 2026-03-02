@@ -1,4 +1,5 @@
 ﻿using BusTicketBooking.Dtos.Bus;
+using BusTicketBooking.Models.Enums;
 
 namespace BusTicketBooking.Interfaces
 {
@@ -9,5 +10,8 @@ namespace BusTicketBooking.Interfaces
         Task<BusResponseDto?> GetByIdAsync(Guid id, CancellationToken ct = default);
         Task<BusResponseDto?> UpdateAsync(Guid id, UpdateBusRequestDto dto, CancellationToken ct = default);
         Task<bool> DeleteAsync(Guid id, CancellationToken ct = default);
+
+        // <-- added
+        Task<BusResponseDto?> UpdateStatusAsync(Guid id, BusStatus status, CancellationToken ct = default);
     }
 }

@@ -54,8 +54,17 @@ namespace BusTicketBooking.Services
                 .FirstOrDefaultAsync(s => s.Id == dto.ScheduleId, ct)
                 ?? throw new InvalidOperationException("Schedule not found.");
 
+            // Block booking if bus not available
+            var busStatus = schedule.Bus?.Status ?? BusStatus.NotAvailable;
+            if (busStatus != BusStatus.Available)
+            {
+                var reason = busStatus == BusStatus.UnderRepair ? "Bus is under repair." : "Bus is not available.";
+                throw new InvalidOperationException(reason);
+            }
+
             var totalSeats = schedule.Bus?.TotalSeats ?? 0;
             if (totalSeats <= 0) totalSeats = 40; // fallback
+
             var allowedSeats = GenerateNumericSeats(totalSeats);
             var allowedSet = new HashSet<string>(allowedSeats, StringComparer.OrdinalIgnoreCase);
 
@@ -68,7 +77,7 @@ namespace BusTicketBooking.Services
             var total = schedule.BasePrice * dto.Passengers.Count;
 
             // SERIALIZABLE to avoid concurrent seat conflicts
-            await using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable, ct);
+            await using var tx = await _db.Database.BeginTransactionAsync(IsolationLevel.Serializable, ct);
 
             var requestedSeats = dto.Passengers.Select(p => p.SeatNo.Trim()).ToList();
 
@@ -114,7 +123,6 @@ namespace BusTicketBooking.Services
             await _payments.AddAsync(payment, ct);
 
             await tx.CommitAsync(ct);
-
             return await LoadForResponse(entity.Id, ct) ?? throw new InvalidOperationException("Booking created but failed to load.");
         }
 
@@ -145,6 +153,7 @@ namespace BusTicketBooking.Services
 
             if (e is null) return null;
             if (!allowPrivileged && e.UserId != userId) return null;
+
             return Map(e);
         }
 
@@ -164,7 +173,6 @@ namespace BusTicketBooking.Services
             await _bookings.UpdateAsync(booking, ct);
 
             // Optional: refund logic here
-
             return true;
         }
 
@@ -172,6 +180,7 @@ namespace BusTicketBooking.Services
         {
             var booking = await _db.Bookings
                 .Include(b => b.Payment)
+                .Include(b => b.Schedule)!.ThenInclude(s => s!.Bus)  // ensure Bus loaded for response
                 .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
 
             if (booking is null) return null;
@@ -200,7 +209,6 @@ namespace BusTicketBooking.Services
                 .Include(b => b.Schedule)!.ThenInclude(s => s!.Route)
                 .AsNoTracking()
                 .FirstOrDefaultAsync(b => b.Id == bookingId, ct);
-
             return e is null ? null : Map(e);
         }
 
@@ -215,10 +223,15 @@ namespace BusTicketBooking.Services
                 TotalAmount = e.TotalAmount,
                 CreatedAtUtc = e.CreatedAtUtc,
                 UpdatedAtUtc = e.UpdatedAtUtc,
+
                 BusCode = e.Schedule?.Bus?.Code ?? string.Empty,
                 RegistrationNumber = e.Schedule?.Bus?.RegistrationNumber ?? string.Empty,
                 RouteCode = e.Schedule?.Route?.RouteCode ?? string.Empty,
                 DepartureUtc = e.Schedule?.DepartureUtc ?? default,
+
+                // <-- added
+                BusStatus = e.Schedule?.Bus?.Status ?? BusStatus.Available,
+
                 Passengers = e.Passengers.Select(p => new BookingPassengerDto
                 {
                     Name = p.Name,

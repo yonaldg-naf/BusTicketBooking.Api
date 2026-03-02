@@ -13,5 +13,8 @@ namespace BusTicketBooking.Dtos.Bus
 
         [Range(1, 100)]
         public int TotalSeats { get; set; } = 40;
+
+        [Required]
+        public BusStatus Status { get; set; } = BusStatus.Available;  // <-- added
     }
 }
