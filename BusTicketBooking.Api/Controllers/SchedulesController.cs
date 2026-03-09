@@ -5,6 +5,10 @@ using BusTicketBooking.Models;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
+// NEW
+using BusTicketBooking.Contexts;
+using Microsoft.EntityFrameworkCore;
+
 namespace BusTicketBooking.Controllers
 {
     [Route("api/[controller]")]
@@ -13,9 +17,14 @@ namespace BusTicketBooking.Controllers
     {
         private readonly IScheduleService _schedules;
 
-        public SchedulesController(IScheduleService schedules)
+        // NEW: we need DB access to resolve city -> stop(s)
+        private readonly AppDbContext _db;
+
+        // UPDATED: inject AppDbContext
+        public SchedulesController(IScheduleService schedules, AppDbContext db)
         {
             _schedules = schedules;
+            _db = db;
         }
 
         // Admin/Operator: list all schedules
@@ -83,9 +92,10 @@ namespace BusTicketBooking.Controllers
         }
 
         /// <summary>
-        /// Public: search schedules by fromStopId, toStopId, date (yyyy-MM-dd) with sorting + pagination
+        /// Public: search schedules by fromStopId, toStopId, date (yyyy-MM-dd) with sorting + pagination.
+        /// Backward-compatible existing endpoint.
         /// Example:
-        /// GET /api/schedules/search?fromStopId=...&toStopId=...&date=2026-02-27&page=1&pageSize=10&sortBy=price&sortDir=asc
+        /// /api/schedules/search?fromStopId=...&toStopId=...&date=2026-03-10&page=1&pageSize=10&sortBy=price&sortDir=asc
         /// </summary>
         [AllowAnonymous]
         [HttpGet("search")]
@@ -109,10 +119,97 @@ namespace BusTicketBooking.Controllers
                 SortBy = sortBy,
                 SortDir = sortDir
             };
-
             var dateOnly = DateOnly.FromDateTime(date);
             var results = await _schedules.SearchAsync(fromStopId, toStopId, dateOnly, request, ct);
             return Ok(results);
+        }
+
+        /// <summary>
+        /// Public: city-based search.
+        /// Example:
+        /// /api/schedules/search-by-city?fromCity=Mumbai&toCity=Pune&date=2026-03-10&page=1&pageSize=10
+        /// </summary>
+        [AllowAnonymous]
+        [HttpGet("search-by-city")]
+        public async Task<ActionResult<PagedResult<ScheduleResponseDto>>> SearchByCity(
+            [FromQuery] string fromCity,
+            [FromQuery] string toCity,
+            [FromQuery] DateTime date,
+            [FromQuery] int page = 1,
+            [FromQuery] int pageSize = 10,
+            [FromQuery] string? sortBy = "departure",
+            [FromQuery] string? sortDir = "asc",
+            CancellationToken ct = default)
+        {
+            if (string.IsNullOrWhiteSpace(fromCity) || string.IsNullOrWhiteSpace(toCity))
+                return BadRequest(new { message = "fromCity and toCity are required." });
+
+            var fc = fromCity.Trim();
+            var tc = toCity.Trim();
+
+            // V1: Exact city match; switch to prefix LIKE for partial match if you want
+            var fromStops = await _db.Stops
+                .AsNoTracking()
+                .Where(s => s.City == fc)
+                .OrderBy(s => s.Name)
+                .ToListAsync(ct);
+
+            var toStops = await _db.Stops
+                .AsNoTracking()
+                .Where(s => s.City == tc)
+                .OrderBy(s => s.Name)
+                .ToListAsync(ct);
+
+            if (fromStops.Count == 0 || toStops.Count == 0)
+                return NotFound(new { message = "Could not find one or both cities. Check spelling or seed data." });
+
+            var request = new PagedRequestDto
+            {
+                Page = page,
+                PageSize = pageSize,
+                SortBy = sortBy,
+                SortDir = sortDir
+            };
+            var dateOnly = DateOnly.FromDateTime(date);
+
+            // Collect results for all (fromStop, toStop) pairs, de-duplicate by ScheduleId
+            var unique = new Dictionary<Guid, ScheduleResponseDto>();
+            foreach (var fs in fromStops)
+            {
+                foreach (var ts in toStops)
+                {
+                    var pageResult = await _schedules.SearchAsync(fs.Id, ts.Id, dateOnly, request, ct);
+                    foreach (var item in pageResult.Items)
+                    {
+                        unique[item.Id] = item; // last one wins; items are equivalent anyway
+                    }
+                }
+            }
+
+            // Sort + page (same rules)
+            var merged = unique.Values.AsEnumerable();
+            var sortKey = (request.SortBy ?? "departure").Trim().ToLowerInvariant();
+            bool desc = request.IsDescending();
+
+            merged = sortKey switch
+            {
+                "price" => desc ? merged.OrderByDescending(x => x.BasePrice) : merged.OrderBy(x => x.BasePrice),
+                "buscode" => desc ? merged.OrderByDescending(x => x.BusCode) : merged.OrderBy(x => x.BusCode),
+                "routecode" => desc ? merged.OrderByDescending(x => x.RouteCode) : merged.OrderBy(x => x.RouteCode),
+                _ => desc ? merged.OrderByDescending(x => x.DepartureUtc) : merged.OrderBy(x => x.DepartureUtc),
+            };
+
+            var total = merged.LongCount();
+            var (skip, take) = request.GetSkipTake();
+            var pageItems = merged.Skip(skip).Take(take).ToList();
+
+            return Ok(new PagedResult<ScheduleResponseDto>
+            {
+                Page = request.Page,
+                PageSize = request.PageSize,
+                TotalCount = total,
+                Items = pageItems
+            });
         }
 
         /// <summary>
