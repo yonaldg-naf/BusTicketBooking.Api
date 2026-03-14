@@ -114,7 +114,6 @@ namespace BusTicketBooking.Contexts
                  .HasForeignKey(s => s.RouteId)
                  .OnDelete(DeleteBehavior.Restrict);
             });
-
             // Booking
             modelBuilder.Entity<Booking>(e =>
             {

@@ -4,6 +4,7 @@ using BusTicketBooking.Dtos.Bookings;
 using BusTicketBooking.Interfaces;
 using BusTicketBooking.Models;
 using BusTicketBooking.Models.Enums;
+using BusTicketBooking.Repositories;
 using Microsoft.EntityFrameworkCore;
 
 namespace BusTicketBooking.Services
@@ -243,5 +244,7 @@ namespace BusTicketBooking.Services
 
         private static List<string> GenerateNumericSeats(int totalSeats)
             => Enumerable.Range(1, totalSeats).Select(i => i.ToString()).ToList();
+
+        
     }
 }

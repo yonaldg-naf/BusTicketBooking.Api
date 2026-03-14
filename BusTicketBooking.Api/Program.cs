@@ -107,11 +107,11 @@ builder.Services
     });
 
 // Optional named policies if you prefer policy-based attributes
-builder.Services.AddAuthorization(options =>
-{
-    options.AddPolicy("AdminOnly", p => p.RequireRole(Roles.Admin));
-    options.AddPolicy("OperatorOnly", p => p.RequireRole(Roles.Operator));
-});
+//builder.Services.AddAuthorization(options =>
+//{
+//    options.AddPolicy("AdminOnly", p => p.RequireRole(Roles.Admin));
+//    options.AddPolicy("OperatorOnly", p => p.RequireRole(Roles.Operator));
+//});
 #endregion
 
 var app = builder.Build();

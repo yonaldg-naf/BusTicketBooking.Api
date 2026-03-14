@@ -9,6 +9,7 @@ namespace BusTicketBooking.Models
         public double? Latitude { get; set; }
         public double? Longitude { get; set; }
 
+
         public ICollection<RouteStop> RouteStops { get; set; } = new List<RouteStop>();
     }
 }

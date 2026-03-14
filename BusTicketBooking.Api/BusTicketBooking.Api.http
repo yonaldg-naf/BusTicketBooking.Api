@@ -1,6 +1,7 @@
-@BusTicketBooking.Api_HostAddress = http://localhost:5299
+POST http://localhost:5299/api/Auth/register
+Content-Type: application/json
 
-GET {{BusTicketBooking.Api_HostAddress}}/weatherforecast/
-Accept: application/json
-
-###
+{
+  "username": "customer4",
+  "password": "Customer@456"
+}
