@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>BusGo – Book Your Bus Tickets</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=Fraunces:wght@700;900&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --navy: #0A1F44;
+    --navy-mid: #142d5e;
+    --navy-light: #1e3d7a;
+    --white: #ffffff;
+    --off: #f4f6fb;
+    --muted: #7a8ba6;
+    --border: #dde4f0;
+    --radius-sm: 10px;
+    --radius-md: 16px;
+    --radius-lg: 24px;
+    --shadow-sm: 0 2px 12px rgba(10,31,68,0.08);
+    --shadow-md: 0 8px 32px rgba(10,31,68,0.12);
+    --shadow-lg: 0 20px 60px rgba(10,31,68,0.18);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--white);
+    color: var(--navy);
+    line-height: 1.6;
+    overflow-x: hidden;
+  }
+  a { text-decoration: none; color: inherit; }
+  button { cursor: pointer; font-family: inherit; }
+
+  /* ─── VIEWS ─────────────────────────────────── */
+  .view { display: none; }
+  .view.active { display: block; }
+
+  /* ─── NAVBAR ─────────────────────────────────── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    background: var(--white);
+    border-bottom: 1px solid var(--border);
+    padding: 0 5%;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 68px;
+    box-shadow: var(--shadow-sm);
+    transition: all 0.3s;
+  }
+  .nav-logo {
+    display: flex; align-items: center; gap: 10px;
+    font-family: 'Fraunces', serif;
+    font-size: 22px; font-weight: 900;
+    color: var(--navy); cursor: pointer;
+    letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: var(--navy);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; fill: white; }
+  .nav-links {
+    display: flex; align-items: center; gap: 32px;
+    list-style: none;
+  }
+  .nav-links a {
+    font-size: 14px; font-weight: 500;
+    color: var(--muted);
+    transition: color 0.2s;
+    letter-spacing: 0.2px;
+  }
+  .nav-links a:hover { color: var(--navy); }
+  .nav-cta {
+    display: flex; align-items: center; gap: 12px;
+  }
+  .btn-outline {
+    border: 1.5px solid var(--navy);
+    background: transparent;
+    color: var(--navy);
+    padding: 8px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-outline:hover { background: var(--navy); color: white; }
+  .btn-primary {
+    background: var(--navy);
+    color: white;
+    border: none;
+    padding: 9px 22px;
+    border-radius: var(--radius-sm);
+    font-size: 14px; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-primary:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 4px 16px rgba(10,31,68,0.2); }
+  .btn-primary:active { transform: translateY(0); }
+  .hamburger {
+    display: none;
+    flex-direction: column; gap: 5px;
+    background: none; border: none; padding: 4px;
+  }
+  .hamburger span { width: 22px; height: 2px; background: var(--navy); border-radius: 2px; transition: all 0.3s; display: block; }
+
+  /* ─── HERO ─────────────────────────────────── */
+  .hero {
+    min-height: 100vh;
+    background: var(--navy);
+    display: flex; align-items: center;
+    padding: 120px 5% 80px;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; top: -100px; right: -80px;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .hero::after {
+    content: '';
+    position: absolute; bottom: -150px; right: 10%;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.04);
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    max-width: 1200px;
+    margin: 0 auto;
+    width: 100%;
+    align-items: center;
+    position: relative; z-index: 1;
+  }
+  .hero-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    background: rgba(255,255,255,0.08);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 500;
+    color: rgba(255,255,255,0.8);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    margin-bottom: 24px;
+  }
+  .badge-dot { width: 6px; height: 6px; background: #4ade80; border-radius: 50%; }
+  .hero-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(38px, 5vw, 62px);
+    font-weight: 900;
+    color: white;
+    line-height: 1.1;
+    letter-spacing: -1.5px;
+    margin-bottom: 20px;
+  }
+  .hero-title span { color: rgba(255,255,255,0.4); }
+  .hero-desc {
+    font-size: 17px; font-weight: 300;
+    color: rgba(255,255,255,0.65);
+    line-height: 1.7;
+    margin-bottom: 40px;
+    max-width: 420px;
+  }
+  .hero-stats {
+    display: flex; gap: 32px;
+  }
+  .hero-stat { }
+  .hero-stat-num {
+    font-family: 'Fraunces', serif;
+    font-size: 28px; font-weight: 700;
+    color: white; line-height: 1;
+  }
+  .hero-stat-label {
+    font-size: 12px; color: rgba(255,255,255,0.5);
+    margin-top: 4px; letter-spacing: 0.3px;
+  }
+
+  /* ─── SEARCH CARD ─────────────────────────────────── */
+  .search-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 36px;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+  }
+  .search-card-header {
+    margin-bottom: 28px;
+  }
+  .search-card-header h3 {
+    font-family: 'Fraunces', serif;
+    font-size: 20px; font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 4px;
+  }
+  .search-card-header p {
+    font-size: 13px; color: var(--muted);
+  }
+  .form-row {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 16px;
+    margin-bottom: 16px;
+  }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group label {
+    font-size: 11px; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  .form-group input, .form-group select {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--navy);
+    background: var(--white);
+    transition: border-color 0.2s;
+    outline: none;
+  }
+  .form-group input:focus, .form-group select:focus { border-color: var(--navy); }
+  .form-group input::placeholder { color: var(--muted); }
+  .swap-btn {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    top: 50%; margin-top: -18px;
+    width: 32px; height: 32px;
+    background: var(--navy);
+    border: none; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    color: white; font-size: 14px;
+    z-index: 2; transition: transform 0.3s;
+  }
+  .swap-btn:hover { transform: translateX(-50%) rotate(180deg); }
+  .from-to-row { position: relative; }
+  .search-btn {
+    width: 100%;
+    background: var(--navy);
+    color: white; border: none;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 600;
+    letter-spacing: 0.3px;
+    transition: all 0.2s;
+    margin-top: 4px;
+  }
+  .search-btn:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(10,31,68,0.25); }
+
+  /* ─── SECTIONS ─────────────────────────────────── */
+  section { padding: 100px 5%; }
+  .section-tag {
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 12px;
+  }
+  .section-title {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(28px, 4vw, 44px);
+    font-weight: 900; letter-spacing: -1px;
+    color: var(--navy); line-height: 1.15;
+    margin-bottom: 16px;
+  }
+  .section-sub {
+    font-size: 16px; color: var(--muted);
+    max-width: 480px; line-height: 1.7;
+  }
+  .section-header { max-width: 1200px; margin: 0 auto 60px; }
+
+  /* ─── FEATURES ─────────────────────────────────── */
+  .features { background: var(--off); }
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 20px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .feature-card {
+    background: var(--white);
+    border-radius: var(--radius-md);
+    padding: 32px 28px;
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+    position: relative; overflow: hidden;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute; top: 0; left: 0; right: 0;
+    height: 3px;
+    background: var(--navy);
+    transform: scaleX(0); transform-origin: left;
+    transition: transform 0.3s;
+  }
+  .feature-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-md); }
+  .feature-card:hover::before { transform: scaleX(1); }
+  .feature-icon {
+    width: 52px; height: 52px;
+    background: var(--navy);
+    border-radius: var(--radius-sm);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 20px;
+  }
+  .feature-icon svg { width: 24px; height: 24px; stroke: white; fill: none; stroke-width: 1.8; }
+  .feature-card h3 {
+    font-weight: 600; font-size: 17px;
+    color: var(--navy); margin-bottom: 10px;
+  }
+  .feature-card p { font-size: 14px; color: var(--muted); line-height: 1.6; }
+
+  /* ─── HOW IT WORKS ─────────────────────────────────── */
+  .how-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 40px;
+    max-width: 1200px; margin: 0 auto;
+  }
+  .step {
+    display: flex; flex-direction: column; align-items: flex-start;
+    position: relative;
+  }
+  .step-num {
+    font-family: 'Fraunces', serif;
+    font-size: 64px; font-weight: 900;
+    color: var(--border); line-height: 1;
+    margin-bottom: 8px; letter-spacing: -3px;
+  }
+  .step h3 { font-weight: 600; font-size: 18px; color: var(--navy); margin-bottom: 10px; }
+  .step p { font-size: 14px; color: var(--muted); line-height: 1.7; }
+
+  /* ─── CTA ─────────────────────────────────── */
+  .cta-section {
+    background: var(--navy);
+    padding: 100px 5%;
+  }
+  .cta-inner {
+    max-width: 700px; margin: 0 auto; text-align: center;
+  }
+  .cta-inner h2 {
+    font-family: 'Fraunces', serif;
+    font-size: clamp(32px, 4.5vw, 52px);
+    font-weight: 900; letter-spacing: -1.5px;
+    color: white; margin-bottom: 16px;
+    line-height: 1.1;
+  }
+  .cta-inner p { font-size: 16px; color: rgba(255,255,255,0.6); margin-bottom: 36px; }
+  .cta-btns { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
+  .btn-white {
+    background: white; color: var(--navy);
+    border: none; padding: 14px 32px;
+    border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 600;
+    transition: all 0.2s;
+  }
+  .btn-white:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+  .btn-ghost {
+    background: transparent; color: rgba(255,255,255,0.8);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    padding: 14px 32px;
+    border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 500;
+    transition: all 0.2s;
+  }
+  .btn-ghost:hover { background: rgba(255,255,255,0.1); border-color: rgba(255,255,255,0.5); }
+
+  /* ─── FOOTER ─────────────────────────────────── */
+  footer {
+    background: var(--off);
+    border-top: 1px solid var(--border);
+    padding: 60px 5% 32px;
+  }
+  .footer-grid {
+    max-width: 1200px; margin: 0 auto;
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr;
+    gap: 60px;
+    margin-bottom: 48px;
+  }
+  .footer-brand p {
+    font-size: 14px; color: var(--muted);
+    margin-top: 12px; line-height: 1.7;
+    max-width: 240px;
+  }
+  .footer-col h4 {
+    font-weight: 600; font-size: 13px;
+    letter-spacing: 0.8px; text-transform: uppercase;
+    color: var(--navy); margin-bottom: 16px;
+  }
+  .footer-col ul { list-style: none; }
+  .footer-col ul li { margin-bottom: 10px; }
+  .footer-col ul li a { font-size: 14px; color: var(--muted); transition: color 0.2s; }
+  .footer-col ul li a:hover { color: var(--navy); }
+  .footer-bottom {
+    max-width: 1200px; margin: 0 auto;
+    border-top: 1px solid var(--border);
+    padding-top: 24px;
+    display: flex; justify-content: space-between; align-items: center;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .footer-bottom p { font-size: 13px; color: var(--muted); }
+
+  /* ─── AUTH PAGE ─────────────────────────────────── */
+  .auth-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+  }
+  .auth-left {
+    background: var(--navy);
+    padding: 60px;
+    display: flex; flex-direction: column;
+    justify-content: center;
+    position: relative; overflow: hidden;
+  }
+  .auth-left::before {
+    content: '';
+    position: absolute; bottom: -120px; right: -80px;
+    width: 400px; height: 400px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.05);
+  }
+  .auth-left-content { position: relative; z-index: 1; }
+  .auth-back {
+    display: inline-flex; align-items: center; gap: 8px;
+    color: rgba(255,255,255,0.6);
+    font-size: 13px; font-weight: 500;
+    background: none; border: none;
+    margin-bottom: 60px; padding: 0;
+    cursor: pointer; transition: color 0.2s;
+  }
+  .auth-back:hover { color: white; }
+  .auth-left h2 {
+    font-family: 'Fraunces', serif;
+    font-size: 42px; font-weight: 900;
+    color: white; letter-spacing: -1.5px;
+    line-height: 1.1; margin-bottom: 16px;
+  }
+  .auth-left p {
+    font-size: 16px; color: rgba(255,255,255,0.55);
+    line-height: 1.7; max-width: 320px;
+  }
+  .auth-features { margin-top: 48px; display: flex; flex-direction: column; gap: 16px; }
+  .auth-feat {
+    display: flex; align-items: center; gap: 12px;
+    font-size: 14px; color: rgba(255,255,255,0.7);
+  }
+  .auth-feat-dot {
+    width: 8px; height: 8px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%; flex-shrink: 0;
+  }
+  .auth-right {
+    background: var(--off);
+    display: flex; align-items: center; justify-content: center;
+    padding: 40px;
+    overflow-y: auto;
+  }
+  .auth-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 44px;
+    width: 100%; max-width: 420px;
+    box-shadow: var(--shadow-md);
+    border: 1px solid var(--border);
+  }
+  .auth-tabs {
+    display: flex;
+    background: var(--off);
+    border-radius: var(--radius-sm);
+    padding: 4px;
+    margin-bottom: 32px;
+  }
+  .auth-tab {
+    flex: 1; padding: 9px;
+    border: none; background: transparent;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; font-weight: 500;
+    color: var(--muted);
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .auth-tab.active { background: var(--navy); color: white; }
+  .auth-title { font-family: 'Fraunces', serif; font-size: 24px; font-weight: 700; color: var(--navy); margin-bottom: 4px; }
+  .auth-sub { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+  .auth-form { display: flex; flex-direction: column; gap: 16px; }
+  .auth-form .form-group label { font-size: 12px; font-weight: 600; color: var(--navy); letter-spacing: 0.5px; text-transform: uppercase; }
+  .auth-form .form-group input {
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px; color: var(--navy);
+    background: var(--off);
+    transition: all 0.2s;
+    outline: none; width: 100%;
+  }
+  .auth-form .form-group input:focus { border-color: var(--navy); background: white; }
+  .forgot {
+    display: inline-block;
+    font-size: 12px; color: var(--muted);
+    float: right; margin-top: -4px;
+    transition: color 0.2s; cursor: pointer;
+  }
+  .forgot:hover { color: var(--navy); }
+  .auth-submit {
+    width: 100%;
+    background: var(--navy);
+    color: white; border: none;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    font-size: 15px; font-weight: 600;
+    transition: all 0.2s; margin-top: 4px;
+  }
+  .auth-submit:hover { background: var(--navy-light); transform: translateY(-1px); box-shadow: 0 6px 20px rgba(10,31,68,0.25); }
+  .auth-switch {
+    text-align: center; font-size: 13px;
+    color: var(--muted); margin-top: 20px;
+  }
+  .auth-switch button {
+    background: none; border: none;
+    color: var(--navy); font-weight: 600;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px; cursor: pointer;
+    text-decoration: underline; padding: 0;
+  }
+  .form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 4px 0;
+    font-size: 12px; color: var(--muted);
+  }
+  .divider::before, .divider::after {
+    content: ''; flex: 1;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ─── RESPONSIVE ─────────────────────────────────── */
+  @media (max-width: 1024px) {
+    .features-grid { grid-template-columns: repeat(2, 1fr); }
+    .footer-grid { grid-template-columns: 1fr 1fr; gap: 40px; }
+  }
+  @media (max-width: 860px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 40px; }
+    .how-grid { grid-template-columns: 1fr; gap: 32px; }
+    .auth-page { grid-template-columns: 1fr; }
+    .auth-left { display: none; }
+    .auth-right { padding: 80px 24px 40px; }
+    .nav-links, .nav-cta { display: none; }
+    .hamburger { display: flex; }
+    nav { padding: 0 24px; }
+    .features-grid { grid-template-columns: 1fr; }
+    .footer-grid { grid-template-columns: 1fr; gap: 32px; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 540px) {
+    .hero { padding: 100px 24px 60px; }
+    section { padding: 60px 24px; }
+    .search-card { padding: 24px; }
+    .cta-section { padding: 60px 24px; }
+    footer { padding: 40px 24px 24px; }
+    .auth-card { padding: 28px 24px; }
+    .form-row-2 { grid-template-columns: 1fr; }
+  }
+
+  /* ─── ANIMATIONS ─────────────────────────────────── */
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+  .fade-up { animation: fadeUp 0.6s ease forwards; }
+  .fade-up:nth-child(2) { animation-delay: 0.1s; }
+  .fade-up:nth-child(3) { animation-delay: 0.2s; }
+  .fade-up:nth-child(4) { animation-delay: 0.3s; }
+  .auth-card { animation: fadeUp 0.5s ease; }
+</style>
+</head>
+<body>
+
+<!-- ─── NAVBAR ─── -->
+<nav id="navbar">
+  <div class="nav-logo" onclick="showView('landing')">
+    <div class="logo-icon">
+      <svg viewBox="0 0 24 24"><path d="M3 8H21V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V8ZM3 8L5 4H19L21 8M9 17V20M15 17V20M7 12H9M15 12H17"/></svg>
+    </div>
+    BusGo
+  </div>
+  <ul class="nav-links">
+    <li><a href="#" onclick="showView('landing'); return false;">Home</a></li>
+    <li><a href="#features">Features</a></li>
+    <li><a href="#how">How it works</a></li>
+    <li><a href="#footer">Contact</a></li>
+  </ul>
+  <div class="nav-cta">
+    <button class="btn-outline" onclick="showView('auth'); setTab('login')">Log In</button>
+    <button class="btn-primary" onclick="showView('auth'); setTab('register')">Sign Up Free</button>
+  </div>
+  <button class="hamburger" onclick="toggleMobile()">
+    <span></span><span></span><span></span>
+  </button>
+</nav>
+
+<!-- ─── LANDING PAGE ─── -->
+<div id="view-landing" class="view active">
+
+  <!-- HERO -->
+  <section class="hero">
+    <div class="hero-grid">
+      <div class="hero-left">
+        <div class="hero-badge fade-up"><span class="badge-dot"></span> India's Fastest Growing Bus Platform</div>
+        <h1 class="hero-title fade-up">Book Your Bus<br/><span>Journey</span> with Ease.</h1>
+        <p class="hero-desc fade-up">Discover thousands of routes, compare fares, and reserve your seats in seconds. Travel smarter with BusGo.</p>
+        <div class="hero-stats fade-up">
+          <div class="hero-stat">
+            <div class="hero-stat-num">2M+</div>
+            <div class="hero-stat-label">Happy Passengers</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">500+</div>
+            <div class="hero-stat-label">Routes</div>
+          </div>
+          <div class="hero-stat">
+            <div class="hero-stat-num">98%</div>
+            <div class="hero-stat-label">On-time Rate</div>
+          </div>
+        </div>
+      </div>
+      <div class="hero-right fade-up">
+        <div class="search-card">
+          <div class="search-card-header">
+            <h3>Find Your Bus</h3>
+            <p>Search from 500+ routes across India</p>
+          </div>
+          <div class="from-to-row">
+            <div class="form-row">
+              <div class="form-group">
+                <label>From</label>
+                <input type="text" placeholder="Chennai" />
+              </div>
+              <div class="form-group">
+                <label>To</label>
+                <input type="text" placeholder="Bangalore" />
+              </div>
+            </div>
+            <button class="swap-btn" onclick="swapCities()">⇄</button>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Date</label>
+              <input type="date" id="travel-date" />
+            </div>
+            <div class="form-group">
+              <label>Passengers</label>
+              <select>
+                <option>1 Adult</option>
+                <option>2 Adults</option>
+                <option>3 Adults</option>
+                <option>4 Adults</option>
+              </select>
+            </div>
+          </div>
+          <button class="search-btn" onclick="searchBuses()">🔍 Search Buses</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FEATURES -->
+  <section class="features" id="features">
+    <div class="section-header">
+      <div class="section-tag">Why choose us</div>
+      <h2 class="section-title">Everything You Need<br/>to Travel Confidently</h2>
+      <p class="section-sub">From booking to boarding, we've got every step of your journey covered.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+        </div>
+        <h3>Easy Booking</h3>
+        <p>Reserve your seat in under 60 seconds. Our streamlined booking flow is designed for speed and simplicity.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        </div>
+        <h3>Secure Payments</h3>
+        <p>Bank-grade encryption protects every transaction. Pay via UPI, cards, or net banking with total peace of mind.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+        </div>
+        <h3>Live Bus Tracking</h3>
+        <p>Track your bus in real-time on a live map. Never miss a pickup point or wonder where your bus is again.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">
+          <svg viewBox="0 0 24 24"><path d="M12 21.593c-5.63-5.539-11-10.297-11-14.402C1 3.534 3.397 1 6.5 1 8.4 1 10.1 2.2 11 3.5c.9-1.3 2.6-2.5 4.5-2.5C18.603 1 21 3.534 21 7.191c0 4.105-5.37 8.863-11 14.402z"/></svg>
+        </div>
+        <h3>Comfortable Travel</h3>
+        <p>Choose from AC sleepers, semi-sleepers, and luxury coaches. Filter by amenities that matter most to you.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- HOW IT WORKS -->
+  <section id="how" style="background: white;">
+    <div class="section-header">
+      <div class="section-tag">Simple process</div>
+      <h2 class="section-title">Three Steps to<br/>Your Next Journey</h2>
+    </div>
+    <div class="how-grid">
+      <div class="step">
+        <div class="step-num">01</div>
+        <h3>Search Your Route</h3>
+        <p>Enter your origin, destination, and travel date. We'll instantly surface every available bus with real-time pricing and seat availability.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <h3>Pick & Customize</h3>
+        <p>Filter by timing, operator, bus type, or price range. Choose your preferred seat on an interactive seat map — window, aisle, or lower berth.</p>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <h3>Pay & Board</h3>
+        <p>Complete payment securely in seconds and receive your e-ticket instantly. Show it on your phone at boarding — no printout needed.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA -->
+  <section class="cta-section">
+    <div class="cta-inner">
+      <h2>Ready to Hit the Road?</h2>
+      <p>Join over 2 million travelers who book smarter with BusGo. Create your free account in under a minute.</p>
+      <div class="cta-btns">
+        <button class="btn-white" onclick="showView('auth'); setTab('register')">Create Free Account</button>
+        <button class="btn-ghost" onclick="showView('auth'); setTab('login')">I have an account</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- FOOTER -->
+  <footer id="footer">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="nav-logo" style="margin-bottom: 0;">
+          <div class="logo-icon">
+            <svg viewBox="0 0 24 24"><path d="M3 8H21V18C21 19.1 20.1 20 19 20H5C3.9 20 3 19.1 3 18V8ZM3 8L5 4H19L21 8M9 17V20M15 17V20M7 12H9M15 12H17"/></svg>
+          </div>
+          BusGo
+        </div>
+        <p>India's most trusted bus booking platform. Safe, fast, and always on time.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Company</h4>
+        <ul>
+          <li><a href="#">About Us</a></li>
+          <li><a href="#">Careers</a></li>
+          <li><a href="#">Press Kit</a></li>
+          <li><a href="#">Blog</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Support</h4>
+        <ul>
+          <li><a href="#">Help Center</a></li>
+          <li><a href="#">Contact Us</a></li>
+          <li><a href="#">Cancellations</a></li>
+          <li><a href="#">Refund Policy</a></li>
+        </ul>
+      </div>
+      <div class="footer-col">
+        <h4>Legal</h4>
+        <ul>
+          <li><a href="#">Privacy Policy</a></li>
+          <li><a href="#">Terms of Service</a></li>
+          <li><a href="#">Cookie Policy</a></li>
+          <li><a href="#">Accessibility</a></li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <p>© 2026 BusGo Technologies Pvt. Ltd. All rights reserved.</p>
+      <p style="color: var(--muted);">Made with care for Indian travelers</p>
+    </div>
+  </footer>
+
+</div><!-- /view-landing -->
+
+<!-- ─── AUTH PAGE ─── -->
+<div id="view-auth" class="view">
+  <div class="auth-page">
+    <!-- Left Panel -->
+    <div class="auth-left">
+      <div class="auth-left-content">
+        <button class="auth-back" onclick="showView('landing')">
+          ← Back to Home
+        </button>
+        <h2>Travel Further,<br/>Worry Less.</h2>
+        <p>Create your BusGo account and unlock seamless travel across 500+ routes in India.</p>
+        <div class="auth-features">
+          <div class="auth-feat"><span class="auth-feat-dot"></span> Instant e-ticket confirmation</div>
+          <div class="auth-feat"><span class="auth-feat-dot"></span> 24/7 customer support</div>
+          <div class="auth-feat"><span class="auth-feat-dot"></span> Free cancellation within 1 hour</div>
+          <div class="auth-feat"><span class="auth-feat-dot"></span> Exclusive member discounts</div>
+        </div>
+      </div>
+    </div>
+    <!-- Right Panel (Form) -->
+    <div class="auth-right">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" id="tab-login" onclick="setTab('login')">Log In</button>
+          <button class="auth-tab" id="tab-register" onclick="setTab('register')">Sign Up</button>
+        </div>
+
+        <!-- LOGIN FORM -->
+        <div id="form-login">
+          <div class="auth-title">Welcome back</div>
+          <div class="auth-sub">Sign in to manage your bookings</div>
+          <div class="auth-form">
+            <div class="form-group">
+              <label>Email address</label>
+              <input type="email" placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Password <span class="forgot" onclick="forgotPwd()">Forgot password?</span></label>
+              <input type="password" placeholder="••••••••" />
+            </div>
+            <button class="auth-submit">Log In to BusGo</button>
+            <div class="divider">or continue with</div>
+            <button class="btn-outline" style="width:100%; padding: 11px; font-size:14px;" onclick="googleLogin()">
+              <span style="margin-right:8px;">G</span> Continue with Google
+            </button>
+          </div>
+          <div class="auth-switch">
+            New to BusGo? <button onclick="setTab('register')">Create an account</button>
+          </div>
+        </div>
+
+        <!-- REGISTER FORM -->
+        <div id="form-register" style="display:none;">
+          <div class="auth-title">Get started free</div>
+          <div class="auth-sub">Join 2 million+ travelers on BusGo</div>
+          <div class="auth-form">
+            <div class="form-row-2">
+              <div class="form-group">
+                <label>First Name</label>
+                <input type="text" placeholder="Arjun" />
+              </div>
+              <div class="form-group">
+                <label>Last Name</label>
+                <input type="text" placeholder="Sharma" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email address</label>
+              <input type="email" placeholder="you@example.com" />
+            </div>
+            <div class="form-group">
+              <label>Phone Number</label>
+              <input type="tel" placeholder="+91 9876543210" />
+            </div>
+            <div class="form-group">
+              <label>Password</label>
+              <input type="password" placeholder="Min. 8 characters" />
+            </div>
+            <div class="form-group">
+              <label>Confirm Password</label>
+              <input type="password" placeholder="Repeat your password" />
+            </div>
+            <button class="auth-submit">Create My Account</button>
+          </div>
+          <div class="auth-switch">
+            Already have an account? <button onclick="setTab('login')">Log in here</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div><!-- /view-auth -->
+
+<script>
+  // ─── VIEW MANAGEMENT ───
+  function showView(id) {
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + id).classList.add('active');
+    window.scrollTo(0, 0);
+  }
+
+  // ─── AUTH TABS ───
+  function setTab(tab) {
+    document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+    document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+    document.getElementById('form-login').style.display = tab === 'login' ? 'block' : 'none';
+    document.getElementById('form-register').style.display = tab === 'register' ? 'block' : 'none';
+  }
+
+  // ─── UTILS ───
+  function swapCities() {
+    const inputs = document.querySelectorAll('.from-to-row input[type="text"]');
+    if (inputs.length >= 2) {
+      const t = inputs[0].value;
+      inputs[0].value = inputs[1].value;
+      inputs[1].value = t;
+    }
+  }
+  function searchBuses() {
+    alert('🚌 Searching buses... (Connect to your backend API to show results!)');
+  }
+  function forgotPwd() {
+    alert('📧 A reset link will be sent to your email.');
+  }
+  function googleLogin() {
+    alert('🔐 Google OAuth integration required.');
+  }
+  function toggleMobile() {
+    alert('📱 Mobile menu — implement Angular RouterLink navigation here.');
+  }
+
+  // ─── DEFAULT DATE ───
+  const d = new Date(); d.setDate(d.getDate() + 1);
+  const dateEl = document.getElementById('travel-date');
+  if (dateEl) dateEl.value = d.toISOString().split('T')[0];
+</script>
+</body>
+</html>
