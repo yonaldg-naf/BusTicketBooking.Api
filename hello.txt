@@ -1,0 +1,5 @@
+I have added mybackend and front end files if u wanted anyother for changing the changing that I am going to give you in next chat I will give the requirments in next chat now let me know if u wanted anyother from me I will send my requirements  in next chat
+
+I want my UI to look like this not exactly like this but match atleast 90% and give me and also add all the required features in it to look like that and also let me know if there is anyother additional features, or any problems in code that needs to corrected all I wanted is to look like a realistic bus booking page if u have any doubts ask me and then lets start changing and adding features and also when u give the files for frontend and backend give the folder structure as well
+
+the colour is fine I just dont want any of the pages customer pages to be empty I want it to have all the necessary features that customer required like filter sorting and so on and also u give ur ideas I will approve those I want all his features and styles not the colour I want the complete project in the same theme admin, operator and customer in same theme like I sent before
